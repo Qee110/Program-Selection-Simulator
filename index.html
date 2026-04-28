@@ -325,6 +325,14 @@
             font-size: 0.92rem;
         }
 
+        .rating-input {
+            width: 64px;
+            padding: 8px 10px;
+            border: 1px solid #d6ccbf;
+            border-radius: 10px;
+            font: inherit;
+        }
+
         .footer-note {
             margin-top: 18px;
             color: var(--muted);
@@ -347,8 +355,8 @@
             <h1>Aiman's best-fit programme, made easier to understand</h1>
             <p>
                 Adjust what matters most to Aiman and this page will instantly show which undergraduate
-                programme fits him best. The wording is kept simple for users, while the model still follows
-                the assignment requirements in Section B Part ii.
+                programme fits him best. You can also change each programme's ratings to compare different
+                classmates' profiles while still following Section B Part ii and the bonus task.
             </p>
         </section>
 
@@ -419,6 +427,7 @@
                         </p>
                         <ul>
                             <li>The page updates instantly when a slider changes.</li>
+                            <li>Programme ratings can also be changed for comparison across students.</li>
                             <li>The chart compares all programmes side by side.</li>
                             <li>The preset buttons show how different student profiles lead to different outcomes.</li>
                         </ul>
@@ -432,6 +441,7 @@
                         </p>
                         <ul>
                             <li>Programme ratings are taken from Table 1 in the assignment.</li>
+                            <li>You can edit those ratings when testing classmates' profiles for the bonus task.</li>
                             <li>The default importance values match Table 2 exactly.</li>
                             <li>The "overall score" is the model score used before converting to probabilities.</li>
                             <li>The probabilities are calculated using a Multinomial Logit choice model.</li>
@@ -439,8 +449,12 @@
                     </details>
                 </div>
 
-                <details style="margin-top: 24px;">
-                    <summary>Programme ratings used in this simulation (Table 1)</summary>
+                <details style="margin-top: 24px;" open>
+                    <summary>Edit programme ratings for comparison (1 to 5)</summary>
+                    <p class="panel-intro" style="margin-top: 12px;">
+                        Change the ratings below to match a different student's view of each programme.
+                        This helps you compare classmates' profiles for the bonus task.
+                    </p>
                     <table class="small-table" aria-label="Table 1 programme ratings">
                         <thead>
                             <tr>
@@ -455,11 +469,14 @@
                         </thead>
                         <tbody id="ratingsBody"></tbody>
                     </table>
+                    <div class="action-row">
+                        <button class="ghost-btn" type="button" id="resetRatingsButton">Reset ratings to Table 1</button>
+                    </div>
                 </details>
 
                 <p class="footer-note">
-                    This web app is designed for deployment as an interactive platform and includes live inputs,
-                    comparison charts, model assumptions, and example profiles as requested in Section B Part ii.
+                    This web app is designed for deployment as an interactive platform and includes editable weights,
+                    editable programme ratings, comparison charts, model assumptions, and example profiles for the bonus task.
                 </p>
             </section>
         </main>
@@ -512,7 +529,7 @@
             explorer: [20, 10, 15, 10, 10, 35]
         };
 
-        const programmes = [
+        const defaultProgrammes = [
             { name: "Pure Sciences", ratings: [5, 5, 3, 3, 4, 2] },
             { name: "Applied Sciences", ratings: [4, 5, 4, 3, 3, 3] },
             { name: "Engineering", ratings: [4, 5, 5, 2, 5, 2] },
@@ -520,6 +537,7 @@
             { name: "Management", ratings: [3, 3, 3, 5, 3, 3] },
             { name: "Arts", ratings: [2, 3, 2, 4, 2, 4] }
         ];
+        let programmes = JSON.parse(JSON.stringify(defaultProgrammes));
 
         const chartColors = ["#0f766e", "#178a85", "#2b6cb0", "#c2410c", "#ca8a04", "#7c3aed"];
         let chart = null;
@@ -560,9 +578,43 @@
             ratingsBody.innerHTML = programmes.map((programme) => `
                 <tr>
                     <td><strong>${programme.name}</strong></td>
-                    ${programme.ratings.map((rating) => `<td>${rating}</td>`).join("")}
+                    ${programme.ratings.map((rating, index) => `
+                        <td>
+                            <input
+                                type="number"
+                                min="1"
+                                max="5"
+                                step="1"
+                                value="${rating}"
+                                data-programme="${programme.name}"
+                                data-rating-index="${index}"
+                                class="rating-input"
+                                aria-label="${programme.name} ${factorConfig[index].label} rating"
+                            >
+                        </td>
+                    `).join("")}
                 </tr>
             `).join("");
+
+            ratingsBody.querySelectorAll(".rating-input").forEach((input) => {
+                input.addEventListener("input", handleRatingChange);
+            });
+        }
+
+        function handleRatingChange(event) {
+            const input = event.target;
+            const programme = programmes.find((item) => item.name === input.dataset.programme);
+            const ratingIndex = Number(input.dataset.ratingIndex);
+            const parsedValue = Number(input.value);
+
+            if (!programme) {
+                return;
+            }
+
+            const safeValue = Math.min(5, Math.max(1, Number.isFinite(parsedValue) ? parsedValue : 1));
+            input.value = safeValue;
+            programme.ratings[ratingIndex] = safeValue;
+            calculateModel();
         }
 
         function getSliderValues() {
@@ -714,6 +766,13 @@
 
             document.getElementById("resetButton").addEventListener("click", () => applyProfile("default"));
             document.getElementById("equalButton").addEventListener("click", setEqualWeights);
+            document.getElementById("resetRatingsButton").addEventListener("click", resetRatings);
+        }
+
+        function resetRatings() {
+            programmes = JSON.parse(JSON.stringify(defaultProgrammes));
+            renderRatingsTable();
+            calculateModel();
         }
 
         renderControls();
