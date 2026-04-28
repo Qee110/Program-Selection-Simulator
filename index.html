@@ -3,143 +3,723 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aiman's Programme Selection | Discrete Choice Model</title>
+    <title>Aiman's Programme Choice Helper</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1, h2 { color: #2c3e50; text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .input-group { display: flex; flex-direction: column; background: #e9ecef; padding: 10px; border-radius: 6px; }
-        label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #495057; }
-        input { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; margin-top: 20px; }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; }
-        th { background-color: #3498db; color: white; }
-        tr:nth-child(even) { background-color: #f8f9fa; }
-        button { background-color: #28a745; color: white; border: none; padding: 15px; font-size: 1.1em; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.3s; }
-        button:hover { background-color: #218838; }
-        .chart-container { position: relative; height: 400px; width: 100%; margin-top: 30px; }
+        :root {
+            --bg: #f3efe6;
+            --paper: #fffdf8;
+            --ink: #1f2a2e;
+            --muted: #5f6b6d;
+            --line: #ddd4c5;
+            --accent: #0f766e;
+            --accent-soft: #d7efe9;
+            --accent-strong: #115e59;
+            --warm: #c2410c;
+            --shadow: 0 18px 50px rgba(31, 42, 46, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 30%),
+                radial-gradient(circle at top right, rgba(194, 65, 12, 0.10), transparent 24%),
+                linear-gradient(180deg, #f7f3ea 0%, #efe8dc 100%);
+            padding: 24px;
+        }
+
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        .hero,
+        .panel {
+            background: var(--paper);
+            border: 1px solid rgba(221, 212, 197, 0.9);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
+            padding: 28px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -30px -50px auto;
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(194, 65, 12, 0.10));
+            border-radius: 50%;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+            line-height: 1.15;
+        }
+
+        h1 {
+            margin-top: 14px;
+            font-size: clamp(2rem, 3.8vw, 3.4rem);
+            max-width: 10ch;
+        }
+
+        .hero p {
+            max-width: 62ch;
+            color: var(--muted);
+            font-size: 1.02rem;
+            margin: 14px 0 0;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+
+        .panel {
+            padding: 24px;
+        }
+
+        .panel h2 {
+            font-size: 1.35rem;
+            margin-bottom: 10px;
+        }
+
+        .panel-intro {
+            color: var(--muted);
+            margin: 0 0 18px;
+        }
+
+        .preset-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+
+        .preset-btn,
+        .ghost-btn {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--ink);
+            border-radius: 999px;
+            padding: 10px 14px;
+            font: inherit;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .preset-btn:hover,
+        .ghost-btn:hover,
+        .primary-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .preset-btn.active {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-weight: 700;
+        }
+
+        .controls {
+            display: grid;
+            gap: 16px;
+        }
+
+        .slider-card {
+            background: #fbf8f1;
+            border: 1px solid #ede4d7;
+            border-radius: 18px;
+            padding: 16px;
+        }
+
+        .slider-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+            align-items: baseline;
+        }
+
+        .slider-head strong {
+            font-size: 1rem;
+        }
+
+        .slider-value {
+            color: var(--accent-strong);
+            font-weight: 700;
+        }
+
+        .slider-help {
+            color: var(--muted);
+            font-size: 0.92rem;
+            margin: 0 0 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        .weights-note {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 0.95rem;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .primary-btn {
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 999px;
+            padding: 12px 18px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .summary-card {
+            background: linear-gradient(180deg, #f8f5ed 0%, #fff 100%);
+            border: 1px solid #ebe2d4;
+            border-radius: 18px;
+            padding: 18px;
+        }
+
+        .summary-card span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.88rem;
+            margin-bottom: 8px;
+        }
+
+        .summary-card strong {
+            font-size: 1.2rem;
+        }
+
+        .summary-card .big {
+            font-size: 1.7rem;
+        }
+
+        .highlight {
+            border: 1px solid rgba(15, 118, 110, 0.18);
+            background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(255, 253, 248, 1));
+        }
+
+        .explain {
+            color: var(--muted);
+            margin: 0 0 22px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid #ece2d5;
+        }
+
+        thead {
+            background: #1f514f;
+            color: #fff;
+        }
+
+        th,
+        td {
+            padding: 14px 12px;
+            text-align: left;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #faf6ef;
+        }
+
+        tbody tr.top-choice {
+            background: #e9f7f3;
+        }
+
+        .chart-wrap {
+            margin-top: 22px;
+            background: #fff;
+            border: 1px solid #ece2d5;
+            border-radius: 18px;
+            padding: 16px;
+            height: 380px;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        details {
+            background: #fff;
+            border: 1px solid #ece2d5;
+            border-radius: 18px;
+            padding: 16px 18px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        details p,
+        details li {
+            color: var(--muted);
+        }
+
+        ul {
+            padding-left: 18px;
+            margin-bottom: 0;
+        }
+
+        .small-table th,
+        .small-table td {
+            padding: 10px;
+            font-size: 0.92rem;
+        }
+
+        .footer-note {
+            margin-top: 18px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        @media (max-width: 960px) {
+            .layout,
+            .details-grid,
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
-<body onload="calculateModel()">
+<body>
+    <div class="shell">
+        <section class="hero">
+            <span class="eyebrow">Interactive programme selection simulator</span>
+            <h1>Aiman's best-fit programme, made easier to understand</h1>
+            <p>
+                Adjust what matters most to Aiman and this page will instantly show which undergraduate
+                programme fits him best. The wording is kept simple for users, while the model still follows
+                the assignment requirements in Section B Part ii.
+            </p>
+        </section>
 
-<div class="container">
-    <h1>Aiman's Programme Simulator</h1>
-    <p style="text-align: center; color: #6c757d;">Adjust Aiman's factor priorities below to see how his predicted choice changes in real-time.</p>
-    
-    <h2>1. Adjust Factor Weights (Table 2)</h2>
-    <div class="grid">
-        <div class="input-group"><label>Interest</label><input type="number" id="w_int" value="0.30" step="0.05"></div>
-        <div class="input-group"><label>Exam Results</label><input type="number" id="w_exm" value="0.20" step="0.05"></div>
-        <div class="input-group"><label>Career</label><input type="number" id="w_car" value="0.25" step="0.05"></div>
-        <div class="input-group"><label>Location</label><input type="number" id="w_loc" value="0.10" step="0.05"></div>
-        <div class="input-group"><label>Fees</label><input type="number" id="w_fee" value="0.10" step="0.05"></div>
-        <div class="input-group"><label>Explore</label><input type="number" id="w_exp" value="0.05" step="0.05"></div>
+        <main class="layout">
+            <section class="panel">
+                <h2>Choose what matters most</h2>
+                <p class="panel-intro">
+                    Use the sliders below to show how important each factor is. Higher values mean the factor matters more.
+                </p>
+
+                <div class="preset-row" aria-label="Example student profiles">
+                    <button class="preset-btn active" type="button" data-profile="default">Assignment default</button>
+                    <button class="preset-btn" type="button" data-profile="career">Career-focused</button>
+                    <button class="preset-btn" type="button" data-profile="budget">Budget-conscious</button>
+                    <button class="preset-btn" type="button" data-profile="explorer">Explorer</button>
+                </div>
+
+                <div class="controls" id="controls"></div>
+
+                <div class="weights-note" id="weightsNote"></div>
+
+                <div class="action-row">
+                    <button class="primary-btn" type="button" id="resetButton">Reset to assignment values</button>
+                    <button class="ghost-btn" type="button" id="equalButton">Make all factors equal</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="summary-grid">
+                    <div class="summary-card highlight">
+                        <span>Best fit right now</span>
+                        <strong class="big" id="topProgramme">-</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Chance of being chosen</span>
+                        <strong id="topProbability">-</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Runner-up</span>
+                        <strong id="runnerUp">-</strong>
+                    </div>
+                </div>
+
+                <p class="explain" id="summaryText"></p>
+
+                <table aria-label="Programme comparison results">
+                    <thead>
+                        <tr>
+                            <th>Programme</th>
+                            <th>Overall score</th>
+                            <th>Chance of choice</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+
+                <div class="chart-wrap">
+                    <canvas id="probChart"></canvas>
+                </div>
+
+                <div class="details-grid">
+                    <details open>
+                        <summary>How this simulator works</summary>
+                        <p>
+                            Each programme already has fixed ratings from the assignment's Table 1.
+                            Your slider choices show how important each factor is. The app combines both,
+                            then estimates which programme Aiman is most likely to pick.
+                        </p>
+                        <ul>
+                            <li>The page updates instantly when a slider changes.</li>
+                            <li>The chart compares all programmes side by side.</li>
+                            <li>The preset buttons show how different student profiles lead to different outcomes.</li>
+                        </ul>
+                    </details>
+
+                    <details>
+                        <summary>Model assumptions and assignment notes</summary>
+                        <p>
+                            This interface uses the six factors required in Section B Part ii: interest,
+                            exam results, career prospects, location, fees, and willingness to explore.
+                        </p>
+                        <ul>
+                            <li>Programme ratings are taken from Table 1 in the assignment.</li>
+                            <li>The default importance values match Table 2 exactly.</li>
+                            <li>The "overall score" is the model score used before converting to probabilities.</li>
+                            <li>The probabilities are calculated using a Multinomial Logit choice model.</li>
+                        </ul>
+                    </details>
+                </div>
+
+                <details style="margin-top: 24px;">
+                    <summary>Programme ratings used in this simulation (Table 1)</summary>
+                    <table class="small-table" aria-label="Table 1 programme ratings">
+                        <thead>
+                            <tr>
+                                <th>Programme</th>
+                                <th>Interest</th>
+                                <th>Exam</th>
+                                <th>Career</th>
+                                <th>Location</th>
+                                <th>Fees</th>
+                                <th>Explore</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ratingsBody"></tbody>
+                    </table>
+                </details>
+
+                <p class="footer-note">
+                    This web app is designed for deployment as an interactive platform and includes live inputs,
+                    comparison charts, model assumptions, and example profiles as requested in Section B Part ii.
+                </p>
+            </section>
+        </main>
     </div>
 
-    <button onclick="calculateModel()">Run MNL Simulation</button>
-
-    <h2>2. Predicted Results</h2>
-    <table id="resultsTable">
-        <thead>
-            <tr>
-                <th>Programme</th>
-                <th>Utility (U)</th>
-                <th>Probability (%)</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            </tbody>
-    </table>
-
-    <div class="chart-container">
-        <canvas id="probChart"></canvas>
-    </div>
-</div>
-
-<script>
-    let myChart = null;
-
-    // Hardcoded Programme Ratings from Table 1
-    const dataset = [
-        { name: 'Pure Sciences',    ratings: [5, 5, 3, 3, 4, 2] },
-        { name: 'Applied Sciences', ratings: [4, 5, 4, 3, 3, 3] },
-        { name: 'Engineering',      ratings: [4, 5, 5, 2, 5, 2] },
-        { name: 'Accounting',       ratings: [3, 4, 4, 4, 4, 2] },
-        { name: 'Management',       ratings: [3, 3, 3, 5, 3, 3] },
-        { name: 'Arts',             ratings: [2, 3, 2, 4, 2, 4] }
-    ];
-
-    function calculateModel() {
-        // 1. Fetch current weights from the UI
-        const weights = [
-            parseFloat(document.getElementById('w_int').value) || 0,
-            parseFloat(document.getElementById('w_exm').value) || 0,
-            parseFloat(document.getElementById('w_car').value) || 0,
-            parseFloat(document.getElementById('w_loc').value) || 0,
-            parseFloat(document.getElementById('w_fee').value) || 0,
-            parseFloat(document.getElementById('w_exp').value) || 0
+    <script>
+        const factorConfig = [
+            {
+                key: "interest",
+                label: "Interest",
+                help: "How much Aiman likes the field.",
+                defaultValue: 30
+            },
+            {
+                key: "exam",
+                label: "Exam results",
+                help: "How well his results match the entry requirements.",
+                defaultValue: 20
+            },
+            {
+                key: "career",
+                label: "Future career",
+                help: "Job opportunities and salary potential.",
+                defaultValue: 25
+            },
+            {
+                key: "location",
+                label: "Location",
+                help: "Distance from home or preferred city.",
+                defaultValue: 10
+            },
+            {
+                key: "fees",
+                label: "Fees",
+                help: "How affordable the programme feels.",
+                defaultValue: 10
+            },
+            {
+                key: "explore",
+                label: "Willingness to explore",
+                help: "Openness to trying something new.",
+                defaultValue: 5
+            }
         ];
 
-        let utilities = [];
-        let expU = [];
-        let sumExpU = 0;
+        const profiles = {
+            default: [30, 20, 25, 10, 10, 5],
+            career: [20, 15, 35, 5, 10, 15],
+            budget: [20, 15, 15, 10, 30, 10],
+            explorer: [20, 10, 15, 10, 10, 35]
+        };
 
-        // 2. Calculate Utility (U) for each programme
-        dataset.forEach(prog => {
-            let u = 0;
-            for(let i=0; i < 6; i++) {
-                u += prog.ratings[i] * weights[i];
+        const programmes = [
+            { name: "Pure Sciences", ratings: [5, 5, 3, 3, 4, 2] },
+            { name: "Applied Sciences", ratings: [4, 5, 4, 3, 3, 3] },
+            { name: "Engineering", ratings: [4, 5, 5, 2, 5, 2] },
+            { name: "Accounting", ratings: [3, 4, 4, 4, 4, 2] },
+            { name: "Management", ratings: [3, 3, 3, 5, 3, 3] },
+            { name: "Arts", ratings: [2, 3, 2, 4, 2, 4] }
+        ];
+
+        const chartColors = ["#0f766e", "#178a85", "#2b6cb0", "#c2410c", "#ca8a04", "#7c3aed"];
+        let chart = null;
+
+        function renderControls() {
+            const controls = document.getElementById("controls");
+            controls.innerHTML = factorConfig.map((factor, index) => `
+                <div class="slider-card">
+                    <div class="slider-head">
+                        <strong>${factor.label}</strong>
+                        <span class="slider-value" id="${factor.key}Value">${factor.defaultValue}%</span>
+                    </div>
+                    <p class="slider-help">${factor.help}</p>
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value="${factor.defaultValue}"
+                        id="${factor.key}"
+                        data-index="${index}"
+                        aria-label="${factor.label}"
+                    >
+                </div>
+            `).join("");
+
+            controls.querySelectorAll('input[type="range"]').forEach((slider) => {
+                slider.addEventListener("input", () => {
+                    document.getElementById(`${slider.id}Value`).textContent = `${slider.value}%`;
+                    setActiveProfile(null);
+                    calculateModel();
+                });
+            });
+        }
+
+        function renderRatingsTable() {
+            const ratingsBody = document.getElementById("ratingsBody");
+            ratingsBody.innerHTML = programmes.map((programme) => `
+                <tr>
+                    <td><strong>${programme.name}</strong></td>
+                    ${programme.ratings.map((rating) => `<td>${rating}</td>`).join("")}
+                </tr>
+            `).join("");
+        }
+
+        function getSliderValues() {
+            return factorConfig.map((factor) => Number(document.getElementById(factor.key).value));
+        }
+
+        function normalise(values) {
+            const total = values.reduce((sum, value) => sum + value, 0);
+
+            if (total === 0) {
+                return Array(values.length).fill(1 / values.length);
             }
-            utilities.push(u);
-            
-            let eU = Math.exp(u);
-            expU.push(eU);
-            sumExpU += eU;
-        });
 
-        // 3. Calculate Probabilities & Build Table
-        let probs = [];
-        let labels = [];
-        let tableHTML = "";
+            return values.map((value) => value / total);
+        }
 
-        dataset.forEach((prog, i) => {
-            let prob = (expU[i] / sumExpU) * 100;
-            probs.push(prob);
-            labels.push(prog.name);
-            
-            tableHTML += `<tr>
-                <td><strong>${prog.name}</strong></td>
-                <td>${utilities[i].toFixed(3)}</td>
-                <td><strong>${prob.toFixed(2)}%</strong></td>
-            </tr>`;
-        });
+        function setWeightsNote(rawValues, weights) {
+            const total = rawValues.reduce((sum, value) => sum + value, 0);
+            const summary = factorConfig.map((factor, index) => {
+                return `${factor.label}: ${weights[index].toFixed(2)}`;
+            }).join(" | ");
 
-        document.getElementById('tableBody').innerHTML = tableHTML;
+            document.getElementById("weightsNote").textContent =
+                `Current slider total: ${total}. The app automatically balances these values into fair comparison weights. ${summary}`;
+        }
 
-        // 4. Draw the Bar Chart
-        const ctx = document.getElementById('probChart').getContext('2d');
-        if (myChart) { myChart.destroy(); } // Destroy old chart before drawing new one
-        
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Predicted Choice Probability (%)',
-                    data: probs,
-                    backgroundColor: ['#9b59b6', '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#e67e22'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, max: 100 } }
+        function calculateModel() {
+            const rawValues = getSliderValues();
+            const weights = normalise(rawValues);
+            setWeightsNote(rawValues, weights);
+
+            const utilities = programmes.map((programme) => {
+                return programme.ratings.reduce((sum, rating, index) => sum + (rating * weights[index]), 0);
+            });
+
+            const expUtilities = utilities.map((value) => Math.exp(value));
+            const sumExpUtilities = expUtilities.reduce((sum, value) => sum + value, 0);
+
+            const results = programmes.map((programme, index) => ({
+                name: programme.name,
+                score: utilities[index],
+                probability: (expUtilities[index] / sumExpUtilities) * 100
+            })).sort((a, b) => b.probability - a.probability);
+
+            renderSummary(results);
+            renderResultsTable(results);
+            renderChart(results);
+        }
+
+        function renderSummary(results) {
+            const first = results[0];
+            const second = results[1];
+
+            document.getElementById("topProgramme").textContent = first.name;
+            document.getElementById("topProbability").textContent = `${first.probability.toFixed(2)}%`;
+            document.getElementById("runnerUp").textContent = second.name;
+            document.getElementById("summaryText").textContent =
+                `${first.name} is currently the strongest match for Aiman. It leads with ${first.probability.toFixed(2)}%,
+                followed by ${second.name} at ${second.probability.toFixed(2)}%. Try changing the sliders or using a preset
+                profile to see how a different student preference changes the outcome.`;
+        }
+
+        function renderResultsTable(results) {
+            const body = document.getElementById("tableBody");
+            body.innerHTML = results.map((result, index) => `
+                <tr class="${index === 0 ? "top-choice" : ""}">
+                    <td><strong>${result.name}</strong></td>
+                    <td>${result.score.toFixed(3)}</td>
+                    <td>${result.probability.toFixed(2)}%</td>
+                </tr>
+            `).join("");
+        }
+
+        function renderChart(results) {
+            const ctx = document.getElementById("probChart").getContext("2d");
+
+            if (chart) {
+                chart.destroy();
             }
-        });
-    }
-</script>
+
+            chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: results.map((result) => result.name),
+                    datasets: [{
+                        label: "Chance of choice (%)",
+                        data: results.map((result) => result.probability.toFixed(2)),
+                        backgroundColor: chartColors,
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.raw}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: (value) => `${value}%`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function applyProfile(profileName) {
+            const values = profiles[profileName];
+            factorConfig.forEach((factor, index) => {
+                const slider = document.getElementById(factor.key);
+                slider.value = values[index];
+                document.getElementById(`${factor.key}Value`).textContent = `${values[index]}%`;
+            });
+            setActiveProfile(profileName);
+            calculateModel();
+        }
+
+        function setActiveProfile(profileName) {
+            document.querySelectorAll(".preset-btn").forEach((button) => {
+                button.classList.toggle("active", button.dataset.profile === profileName);
+            });
+        }
+
+        function setEqualWeights() {
+            factorConfig.forEach((factor) => {
+                const slider = document.getElementById(factor.key);
+                slider.value = 20;
+                document.getElementById(`${factor.key}Value`).textContent = "20%";
+            });
+            setActiveProfile(null);
+            calculateModel();
+        }
+
+        function bindButtons() {
+            document.querySelectorAll(".preset-btn").forEach((button) => {
+                button.addEventListener("click", () => applyProfile(button.dataset.profile));
+            });
+
+            document.getElementById("resetButton").addEventListener("click", () => applyProfile("default"));
+            document.getElementById("equalButton").addEventListener("click", setEqualWeights);
+        }
+
+        renderControls();
+        renderRatingsTable();
+        bindButtons();
+        applyProfile("default");
+    </script>
 </body>
 </html>
