@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aiman's Programme Selection | Discrete Choice Model</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2 { color: #2c3e50; text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; background: #e9ecef; padding: 10px; border-radius: 6px; }
+        label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #495057; }
+        input { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; margin-top: 20px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; }
+        th { background-color: #3498db; color: white; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        button { background-color: #28a745; color: white; border: none; padding: 15px; font-size: 1.1em; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #218838; }
+        .chart-container { position: relative; height: 400px; width: 100%; margin-top: 30px; }
+    </style>
+</head>
+<body onload="calculateModel()">
+
+<div class="container">
+    <h1>Aiman's Programme Simulator</h1>
+    <p style="text-align: center; color: #6c757d;">Adjust Aiman's factor priorities below to see how his predicted choice changes in real-time.</p>
+    
+    <h2>1. Adjust Factor Weights (Table 2)</h2>
+    <div class="grid">
+        <div class="input-group"><label>Interest</label><input type="number" id="w_int" value="0.30" step="0.05"></div>
+        <div class="input-group"><label>Exam Results</label><input type="number" id="w_exm" value="0.20" step="0.05"></div>
+        <div class="input-group"><label>Career</label><input type="number" id="w_car" value="0.25" step="0.05"></div>
+        <div class="input-group"><label>Location</label><input type="number" id="w_loc" value="0.10" step="0.05"></div>
+        <div class="input-group"><label>Fees</label><input type="number" id="w_fee" value="0.10" step="0.05"></div>
+        <div class="input-group"><label>Explore</label><input type="number" id="w_exp" value="0.05" step="0.05"></div>
+    </div>
+
+    <button onclick="calculateModel()">Run MNL Simulation</button>
+
+    <h2>2. Predicted Results</h2>
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>Programme</th>
+                <th>Utility (U)</th>
+                <th>Probability (%)</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+
+    <div class="chart-container">
+        <canvas id="probChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    // Hardcoded Programme Ratings from Table 1
+    const dataset = [
+        { name: 'Pure Sciences',    ratings: [5, 5, 3, 3, 4, 2] },
+        { name: 'Applied Sciences', ratings: [4, 5, 4, 3, 3, 3] },
+        { name: 'Engineering',      ratings: [4, 5, 5, 2, 5, 2] },
+        { name: 'Accounting',       ratings: [3, 4, 4, 4, 4, 2] },
+        { name: 'Management',       ratings: [3, 3, 3, 5, 3, 3] },
+        { name: 'Arts',             ratings: [2, 3, 2, 4, 2, 4] }
+    ];
+
+    function calculateModel() {
+        // 1. Fetch current weights from the UI
+        const weights = [
+            parseFloat(document.getElementById('w_int').value) || 0,
+            parseFloat(document.getElementById('w_exm').value) || 0,
+            parseFloat(document.getElementById('w_car').value) || 0,
+            parseFloat(document.getElementById('w_loc').value) || 0,
+            parseFloat(document.getElementById('w_fee').value) || 0,
+            parseFloat(document.getElementById('w_exp').value) || 0
+        ];
+
+        let utilities = [];
+        let expU = [];
+        let sumExpU = 0;
+
+        // 2. Calculate Utility (U) for each programme
+        dataset.forEach(prog => {
+            let u = 0;
+            for(let i=0; i < 6; i++) {
+                u += prog.ratings[i] * weights[i];
+            }
+            utilities.push(u);
+            
+            let eU = Math.exp(u);
+            expU.push(eU);
+            sumExpU += eU;
+        });
+
+        // 3. Calculate Probabilities & Build Table
+        let probs = [];
+        let labels = [];
+        let tableHTML = "";
+
+        dataset.forEach((prog, i) => {
+            let prob = (expU[i] / sumExpU) * 100;
+            probs.push(prob);
+            labels.push(prog.name);
+            
+            tableHTML += `<tr>
+                <td><strong>${prog.name}</strong></td>
+                <td>${utilities[i].toFixed(3)}</td>
+                <td><strong>${prob.toFixed(2)}%</strong></td>
+            </tr>`;
+        });
+
+        document.getElementById('tableBody').innerHTML = tableHTML;
+
+        // 4. Draw the Bar Chart
+        const ctx = document.getElementById('probChart').getContext('2d');
+        if (myChart) { myChart.destroy(); } // Destroy old chart before drawing new one
+        
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Predicted Choice Probability (%)',
+                    data: probs,
+                    backgroundColor: ['#9b59b6', '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#e67e22'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, max: 100 } }
+            }
+        });
+    }
+</script>
+</body>
+</html>
